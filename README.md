@@ -3,6 +3,13 @@
 **2nd-Year B.Tech CSE (Cyber Security) College Mini-Project**  
 *A transparent, explainable, and local voice phishing (vishing) threat analyzer.*
 
+[![CI Test Suite](https://github.com/2025a7r010-oss/Phishing-Call-Detector-Risk-Analyser/actions/workflows/ci.yml/badge.svg)](https://github.com/2025a7r010-oss/Phishing-Call-Detector-Risk-Analyser/actions/workflows/ci.yml)
+![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue?logo=python)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit)
+![Speech STT](https://img.shields.io/badge/STT-faster--whisper%20(CPU)-green)
+![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20Local-success)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
 ---
 
 ## 📌 Project Overview
