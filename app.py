@@ -390,9 +390,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ==========================================
-# 2. FIVE PROJECT INFORMATION ICONS + DEMO VIDEO
+# 2. FIVE PROJECT INFORMATION ICONS
 # ==========================================
-info_cols = st.columns(6)
+info_cols = st.columns(5)
 
 with info_cols[0]:
     if st.button("⚠️ Problem Statement", use_container_width=True):
@@ -413,10 +413,6 @@ with info_cols[3]:
 with info_cols[4]:
     if st.button("🚀 Next Milestones", use_container_width=True):
         set_info_modal("milestones")
-
-with info_cols[5]:
-    if st.button("🎬 Demo Video", use_container_width=True):
-        set_info_modal("video")
 
 
 # Active Modal / Information Box Display
