@@ -83,9 +83,19 @@ THEME_CSS = {
         background-color: #0a0e17;
         color: #f8fafc;
     }
-    .block-container {
-        padding-top: 2rem !important;
+    /* Collapse Streamlit's injected header toolbar that causes the top dead zone */
+    header[data-testid="stHeader"] {
+        height: 0rem !important;
+        min-height: 0rem !important;
+        display: none !important;
+    }
+    /* Remove top padding from the main content block */
+    section.main > div.block-container,
+    .block-container,
+    .stMainBlockContainer {
+        padding-top: 1rem !important;
         padding-bottom: 2rem !important;
+        margin-top: 0 !important;
     }
     .main-header-container {
         padding: 4px 0 14px 0;
@@ -222,9 +232,19 @@ THEME_CSS = {
         background-color: #f8fafc;
         color: #0f172a;
     }
-    .block-container {
-        padding-top: 2rem !important;
+    /* Collapse Streamlit's injected header toolbar that causes the top dead zone */
+    header[data-testid="stHeader"] {
+        height: 0rem !important;
+        min-height: 0rem !important;
+        display: none !important;
+    }
+    /* Remove top padding from the main content block */
+    section.main > div.block-container,
+    .block-container,
+    .stMainBlockContainer {
+        padding-top: 1rem !important;
         padding-bottom: 2rem !important;
+        margin-top: 0 !important;
     }
     .main-header-container {
         padding: 4px 0 14px 0;
