@@ -313,9 +313,9 @@ class PhishingAnalyzer:
         }
 
         limitations_disclaimer = (
-            "IMPORTANT ACADEMIC & FORENSIC DISCLAIMER: "
-            "This risk score is derived from a transparent, rule-based heuristic indicator model designed for educational "
-            "and preliminary screening purposes. It highlights suspicious linguistic and social engineering patterns. "
+            "IMPORTANT SECURITY & FORENSIC NOTICE: "
+            "This risk score is derived from a transparent, rule-based heuristic indicator model designed for preliminary screening "
+            "and triage purposes. It highlights suspicious linguistic and social engineering patterns. "
             "It does NOT constitute legally binding proof of fraud, nor does it guarantee absence of threat in unflagged calls."
         )
 

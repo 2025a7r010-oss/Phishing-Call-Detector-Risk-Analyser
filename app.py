@@ -1,7 +1,7 @@
 """
-app.py - AI-Based Phishing Call Detection and Risk Analyzer
-2nd-Year B.Tech CSE Cyber Security Mini-Project
-Modern Streamlit Dashboard, Local Whisper STT, Rule-Based Threat Engine
+app.py - AI-Based Phishing Call Detection & Risk Analyzer
+Professional Cybersecurity Risk Analysis Platform
+Local Whisper STT & Explainable Rule-Based Threat Engine
 """
 
 import os
@@ -20,7 +20,7 @@ import report_generator
 
 # Page Configuration
 st.set_page_config(
-    page_title="AI-Based Phishing Call Detector",
+    page_title="AI-Based Phishing Call Detection & Risk Analyzer",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -42,29 +42,37 @@ if "current_source" not in st.session_state:
     st.session_state.current_source = ""
 if "current_case_id" not in st.session_state:
     st.session_state.current_case_id = None
-if "show_demo_video" not in st.session_state:
-    st.session_state.show_demo_video = False
+if "active_info_modal" not in st.session_state:
+    st.session_state.active_info_modal = None
 if "feedback_submitted" not in st.session_state:
     st.session_state.feedback_submitted = False
 
 
 def toggle_theme():
-    """Toggles theme between dark and light mode without reloading state."""
+    """Toggles theme between dark and light mode without resetting current analysis."""
     st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
 
 
-# Theme CSS Definitions
+def set_info_modal(modal_name: str):
+    """Toggles or sets the active information modal section."""
+    if st.session_state.active_info_modal == modal_name:
+        st.session_state.active_info_modal = None
+    else:
+        st.session_state.active_info_modal = modal_name
+
+
+# Theme CSS Definitions with Flawless Contrast in Both Light and Dark Modes
 THEME_CSS = {
     "dark": """
     <style>
     /* Dark Theme Cyber Palette */
     :root {
-        --bg-main: #0b0f19;
+        --bg-main: #0a0e17;
         --bg-card: #111827;
-        --bg-card-hover: #1f2937;
-        --border-color: #374151;
-        --text-primary: #f9fafb;
-        --text-secondary: #9ca3af;
+        --bg-card-hover: #1e293b;
+        --border-color: #334155;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
         --accent-cyan: #38bdf8;
         --accent-blue: #3b82f6;
         --danger-red: #ef4444;
@@ -72,30 +80,62 @@ THEME_CSS = {
         --success-green: #10b981;
     }
     .stApp {
-        background-color: #0b0f19;
-        color: #f9fafb;
+        background-color: #0a0e17;
+        color: #f8fafc;
     }
-    .main-header {
-        background: linear-gradient(135deg, #111827 0%, #1e1b4b 100%);
-        border: 1px solid #374151;
-        border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    .main-header-container {
+        padding: 8px 0 16px 0;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #1e293b;
     }
     .cyber-card {
         background-color: #111827;
-        border: 1px solid #374151;
-        border-radius: 10px;
-        padding: 18px;
+        border: 1px solid #1e293b;
+        border-radius: 12px;
+        padding: 20px;
         margin-bottom: 16px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .info-modal-card {
+        background-color: #0f172a;
+        border: 1.5px solid #38bdf8;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 6px 20px rgba(56,189,248,0.15);
+    }
+    .step-card {
+        background-color: #111827;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 16px;
+        height: 100%;
+        text-align: center;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .step-card:hover {
+        border-color: #38bdf8;
+        transform: translateY(-2px);
+    }
+    .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #1e293b;
+        color: #38bdf8;
+        font-weight: 800;
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+        border: 1px solid #38bdf8;
     }
     .cyber-badge-high {
         background-color: #7f1d1d;
         color: #fca5a5;
         border: 1px solid #ef4444;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
@@ -104,7 +144,7 @@ THEME_CSS = {
         background-color: #78350f;
         color: #fde68a;
         border: 1px solid #f59e0b;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
@@ -113,38 +153,48 @@ THEME_CSS = {
         background-color: #064e3b;
         color: #a7f3d0;
         border: 1px solid #10b981;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
     }
     .score-circle-high {
         color: #ef4444;
-        font-size: 3rem;
+        font-size: 3.2rem;
         font-weight: 900;
         line-height: 1;
     }
     .score-circle-med {
         color: #f59e0b;
-        font-size: 3rem;
+        font-size: 3.2rem;
         font-weight: 900;
         line-height: 1;
     }
     .score-circle-low {
         color: #10b981;
-        font-size: 3rem;
+        font-size: 3.2rem;
         font-weight: 900;
         line-height: 1;
     }
     .highlight-chip {
-        background-color: #991b1b;
-        color: #fef2f2;
-        padding: 2px 8px;
+        background-color: #7f1d1d;
+        color: #fecaca;
+        border: 1px solid #ef4444;
+        padding: 3px 10px;
         border-radius: 6px;
         font-weight: 600;
         font-size: 0.85rem;
-        margin: 2px;
+        margin: 3px;
         display: inline-block;
+    }
+    .safe-tip-card {
+        background-color: #111827;
+        border-left: 3px solid #38bdf8;
+        padding: 10px 14px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        font-size: 0.88rem;
+        color: #cbd5e1;
     }
     </style>
     """,
@@ -168,27 +218,61 @@ THEME_CSS = {
         background-color: #f8fafc;
         color: #0f172a;
     }
-    .main-header {
-        background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
-        border: 1px solid #cbd5e1;
-        border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    .main-header-container {
+        padding: 8px 0 16px 0;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #e2e8f0;
     }
     .cyber-card {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 18px;
+        border-radius: 12px;
+        padding: 20px;
         margin-bottom: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    }
+    .info-modal-card {
+        background-color: #f0fdf4;
+        border: 1.5px solid #0284c7;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 6px 18px rgba(2, 132, 199, 0.12);
+        color: #0f172a;
+    }
+    .step-card {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 16px;
+        height: 100%;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .step-card:hover {
+        border-color: #0284c7;
+        transform: translateY(-2px);
+    }
+    .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #e0f2fe;
+        color: #0284c7;
+        font-weight: 800;
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+        border: 1px solid #0284c7;
     }
     .cyber-badge-high {
         background-color: #fee2e2;
         color: #991b1b;
         border: 1px solid #f87171;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
@@ -197,7 +281,7 @@ THEME_CSS = {
         background-color: #fef3c7;
         color: #92400e;
         border: 1px solid #fbbf24;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
@@ -206,26 +290,26 @@ THEME_CSS = {
         background-color: #dcfce7;
         color: #166534;
         border: 1px solid #4ade80;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
     }
     .score-circle-high {
         color: #dc2626;
-        font-size: 3rem;
+        font-size: 3.2rem;
         font-weight: 900;
         line-height: 1;
     }
     .score-circle-med {
         color: #d97706;
-        font-size: 3rem;
+        font-size: 3.2rem;
         font-weight: 900;
         line-height: 1;
     }
     .score-circle-low {
         color: #059669;
-        font-size: 3rem;
+        font-size: 3.2rem;
         font-weight: 900;
         line-height: 1;
     }
@@ -233,12 +317,21 @@ THEME_CSS = {
         background-color: #fee2e2;
         color: #991b1b;
         border: 1px solid #fca5a5;
-        padding: 2px 8px;
+        padding: 3px 10px;
         border-radius: 6px;
         font-weight: 600;
         font-size: 0.85rem;
-        margin: 2px;
+        margin: 3px;
         display: inline-block;
+    }
+    .safe-tip-card {
+        background-color: #f1f5f9;
+        border-left: 3px solid #0284c7;
+        padding: 10px 14px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        font-size: 0.88rem;
+        color: #1e293b;
     }
     </style>
     """
@@ -249,124 +342,228 @@ st.markdown(THEME_CSS[st.session_state.theme], unsafe_allow_html=True)
 
 
 # ==========================================
-# HEADER & TOP CONTROLS
+# 1. MAIN HEADER & THEME TOGGLE
 # ==========================================
-header_col1, header_col2, header_col3 = st.columns([6, 2, 2])
+st.markdown('<div class="main-header-container">', unsafe_allow_html=True)
+header_left, header_right = st.columns([8.2, 1.8])
 
-with header_col1:
+with header_left:
     st.markdown("""
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 2.2rem;">🛡️</span>
-            <div>
-                <h2 style="margin: 0; padding: 0; font-weight: 800; letter-spacing: -0.5px;">
-                    AI-Based Phishing Call Detection & Risk Analyzer
-                </h2>
-                <p style="margin: 0; padding: 0; font-size: 0.95rem; opacity: 0.8;">
-                    2nd-Year B.Tech CSE Cyber Security Mini-Project | Local Whisper STT & Explainable Heuristics
-                </p>
-            </div>
-        </div>
+        <h1 style="margin: 0; padding: 0; font-size: 2.1rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 12px;">
+            <span>🛡️</span> AI-Based Phishing Call Detection & Risk Analyzer
+        </h1>
     """, unsafe_allow_html=True)
 
-with header_col2:
-    demo_video_btn = st.button("▶ Demo Video", help="Watch simulated forensic walkthrough video", use_container_width=True)
-    if demo_video_btn:
-        st.session_state.show_demo_video = not st.session_state.show_demo_video
+with header_right:
+    theme_label = "☀️ Light Mode" if st.session_state.theme == "dark" else "🌙 Dark Mode"
+    st.button(theme_label, on_click=toggle_theme, help="Toggle visual appearance", use_container_width=True)
 
-with header_col3:
-    theme_icon = "☀️ Light" if st.session_state.theme == "dark" else "🌙 Dark"
-    st.button(f"{theme_icon} Mode", on_click=toggle_theme, help="Toggle between Dark and Light mode", use_container_width=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Demo Video Modal / Expander
-if st.session_state.show_demo_video:
-    with st.expander("🎬 Guided Demonstration & Forensic Walkthrough Video", expanded=True):
-        st.markdown("""
-            <div style="background-color: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #38bdf8;">
-                <h4 style="color: #38bdf8; margin-top: 0;">System Architecture & Execution Pipeline Demonstration</h4>
-                <p style="font-size: 0.9rem; color: #cbd5e1;">
-                    This interactive simulator illustrates how real-world voice phishing (vishing) attacks are ingested,
-                    transcribed via local Whisper AI, evaluated across 8 contextual indicator categories, and exported as forensic PDF evidence.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Interactive HTML5 Canvas / Audio-Visual Simulation
-        simulation_html = """
-        <div style="width: 100%; height: 260px; background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%); border-radius: 8px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #334155; margin-top: 10px;">
-            <div style="font-family: monospace; font-size: 14px; color: #38bdf8; margin-bottom: 8px; text-shadow: 0 0 8px rgba(56,189,248,0.6);">
-                [SEC-SIMULATOR]: VISHING INGESTION & RISK ENGINE
-            </div>
-            <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px;">
-                <div style="background: #1e1b4b; border: 1px solid #6366f1; padding: 8px 14px; border-radius: 6px; text-align: center; color: #c7d2fe; font-size: 12px;">
-                    1. Voice Ingestion<br/><span style="color:#a5b4fc;">WAV / MP3</span>
-                </div>
-                <div style="color: #38bdf8; font-weight: bold;">➔</div>
-                <div style="background: #064e3b; border: 1px solid #10b981; padding: 8px 14px; border-radius: 6px; text-align: center; color: #a7f3d0; font-size: 12px;">
-                    2. Local Whisper STT<br/><span style="color:#6ee7b7;">CPU Int8 Quantized</span>
-                </div>
-                <div style="color: #38bdf8; font-weight: bold;">➔</div>
-                <div style="background: #78350f; border: 1px solid #f59e0b; padding: 8px 14px; border-radius: 6px; text-align: center; color: #fde68a; font-size: 12px;">
-                    3. Context Pattern Engine<br/><span style="color:#fcd34d;">8 Threat Vectors</span>
-                </div>
-                <div style="color: #38bdf8; font-weight: bold;">➔</div>
-                <div style="background: #7f1d1d; border: 1px solid #ef4444; padding: 8px 14px; border-radius: 6px; text-align: center; color: #fca5a5; font-size: 12px;">
-                    4. Forensic PDF Report<br/><span style="color:#f87171;">Score & Emergency 1930</span>
-                </div>
-            </div>
-            <div style="font-family: monospace; font-size: 11px; color: #94a3b8; text-align: center; max-width: 80%;">
-                STATUS: Engine Ready | Whisper: Offline CPU Active | SQLite DB: Connected | Zero Surveillance Architecture
-            </div>
-        </div>
-        """
-        st.components.v1.html(simulation_html, height=280)
-        
-        st.info("💡 **Demonstration Walkthrough Steps:** Select **Sample 3 (Critical Vishing)** in the tab below, click **Analyze Call**, and inspect the mathematical synergy breakdown and generated PDF audit report.")
-        if st.button("Close Demo Video Window"):
-            st.session_state.show_demo_video = False
-            st.rerun()
-
-st.markdown("---")
 
 # ==========================================
-# SIDEBAR NAVIGATION
+# 2. FIVE PROJECT INFORMATION ICONS + DEMO VIDEO
+# ==========================================
+info_cols = st.columns(6)
+
+with info_cols[0]:
+    if st.button("⚠️ Problem Statement", use_container_width=True):
+        set_info_modal("problem")
+
+with info_cols[1]:
+    if st.button("💡 Proposed Solution", use_container_width=True):
+        set_info_modal("solution")
+
+with info_cols[2]:
+    if st.button("🎯 Project Objectives", use_container_width=True):
+        set_info_modal("objectives")
+
+with info_cols[3]:
+    if st.button("🏗️ Architecture Design", use_container_width=True):
+        set_info_modal("architecture")
+
+with info_cols[4]:
+    if st.button("🚀 Next Milestones", use_container_width=True):
+        set_info_modal("milestones")
+
+with info_cols[5]:
+    if st.button("🎬 Demo Video", use_container_width=True):
+        set_info_modal("video")
+
+
+# Active Modal / Information Box Display
+if st.session_state.active_info_modal:
+    modal_key = st.session_state.active_info_modal
+    
+    with st.container():
+        st.markdown('<div class="info-modal-card">', unsafe_allow_html=True)
+        modal_head, modal_close = st.columns([9.2, 0.8])
+        
+        with modal_close:
+            if st.button("✕", help="Close Information Window", key="btn_close_modal"):
+                st.session_state.active_info_modal = None
+                st.rerun()
+
+        with modal_head:
+            if modal_key == "problem":
+                st.markdown("### ⚠️ Problem Statement")
+                st.markdown("""
+                Voice phishing (**vishing**) is a pervasive form of social engineering where adversaries verbally deceive individuals over telecommunication networks. Scammers impersonate trusted institutions—such as commercial banks, law enforcement agencies, tax authorities, or technical support representatives—to coerce victims into divulging sensitive authentication credentials (OTPs, PINs, passwords, CVVs) or executing unauthorized financial transfers.
+
+                Unlike digital email phishing, which benefits from established URL filters and text analysis gateways, phone conversations exploit immediate auditory psychological urgency, fear, and authority. Victims are often rushed into compliance within minutes, resulting in devastating financial loss and identity compromise.
+                """)
+
+            elif modal_key == "solution":
+                st.markdown("### 💡 Proposed Solution")
+                st.markdown("""
+                The **AI-Based Phishing Call Detection & Risk Analyzer** is an explainable, privacy-preserving cybersecurity system designed to audit recorded voice telephone calls for social engineering tactics.
+
+                - **Zero-Cloud Privacy:** Ingests call recordings and executes offline Speech-to-Text (STT) locally via quantized Whisper models, ensuring sensitive voice recordings never egress to third-party cloud servers.
+                - **Transparent Contextual Heuristics:** Evaluates transcripts against an explainable rule-based engine covering 8 distinct threat vectors (including credential harvesting, remote desktop takeover, and psychological intimidation) rather than opaque black-box neural predictions.
+                - **Explainable Threat Intelligence:** Produces a normalized risk score (0–100), severity tiering (Low, Medium, High), forensic quotation evidence, and actionable safety recommendations, supplemented by exportable PDF and TXT audit reports.
+                """)
+
+            elif modal_key == "objectives":
+                st.markdown("### 🎯 Project Objectives (SMART)")
+                st.markdown("""
+                1. **Objective 1 (Detection & Accuracy):** Develop a transparent contextual threat engine capable of evaluating call transcripts across 8 primary vishing indicator categories, achieving a zero false-positive rate on routine legitimate service interactions across all benchmark test cases.
+                2. **Objective 2 (Privacy & Local Processing):** Integrate an entirely local, on-device speech-to-text pipeline utilizing CPU-quantized Whisper models, ensuring 100% of audio transcription occurs without external network dependencies or data retention risks.
+                3. **Objective 3 (Explainability & Response Time):** Generate an explainable mathematical risk assessment (0–100 scale) with detailed indicator breakdowns and downloadable forensic PDF/TXT reports within 15 seconds of transcription completion.
+                """)
+
+            elif modal_key == "architecture":
+                st.markdown("### 🏗️ Architecture Design")
+                st.markdown("""
+                The application follows a modular, explainable cybersecurity processing pipeline:
+
+                ```
+                ┌────────────────────────────────┐
+                │ 1. Voice Ingestion Subsystem   │ (WAV, MP3, M4A Audio Upload / Demo Scenario)
+                └───────────────┬────────────────┘
+                                │
+                                ▼
+                ┌────────────────────────────────┐
+                │ 2. Local Whisper STT Engine    │ (Offline faster-whisper CPU Int8 Quantization)
+                └───────────────┬────────────────┘
+                                │
+                                ▼
+                ┌────────────────────────────────┐
+                │ 3. Text Normalizer & Lexer     │ (Sentence Tokenization, Case Normalization)
+                └───────────────┬────────────────┘
+                                │
+                                ▼
+                ┌────────────────────────────────┐
+                │ 4. Heuristic Rule Evaluator    │ (8 Contextual Threat Categories + Deduplication)
+                └───────────────┬────────────────┘
+                                │
+                                ▼
+                ┌────────────────────────────────┐
+                │ 5. Tactical Synergy Calculator │ (Compounding Threat Bonuses, 0-100 Capped Score)
+                └───────────────┬────────────────┘
+                                │
+                        ┌───────┴───────┐
+                        ▼               ▼
+                ┌───────────────┐ ┌────────────────┐
+                │ 6. SQLite DB  │ │ 7. ReportLab   │ (Local History & Forensic PDF/TXT Reports)
+                └───────────────┘ └────────────────┘
+                ```
+                """)
+
+            elif modal_key == "milestones":
+                st.markdown("### 🚀 Next Milestones")
+                st.markdown("""
+                - **Milestone 1 — Multilingual Vishing Support:** Implement acoustic models for Hindi and regional languages to detect multilingual code-switching scams prevalent in telephone fraud.
+                - **Milestone 2 — Voice Biometrics & Deepfake Acoustic Analysis:** Integrate acoustic feature extraction to identify synthetic AI-generated voice clones, VoIP background latency, and unnatural pitch modulation.
+                - **Milestone 3 — Enterprise Telephony Auditing:** Develop headless API endpoints to enable enterprise call centers and financial institutions to batch-audit recorded customer interactions asynchronously.
+                """)
+
+            elif modal_key == "video":
+                st.markdown("### 🎬 Project Demonstration Video")
+                video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_video.mp4")
+                if os.path.exists(video_path):
+                    st.video(video_path)
+                else:
+                    st.info("ℹ️ **Demonstration Video Notice:** The video demonstration is currently being prepared and will be published shortly. You can experience the complete, live working workflow by uploading an audio recording or running any of the pre-loaded demo scenarios below.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# 3. SIDEBAR NAVIGATION & STAY SAFE SECTION
 # ==========================================
 with st.sidebar:
-    st.markdown("### 🎛️ Navigation Menu")
+    st.markdown("### 🧭 Explore Features")
     app_mode = st.radio(
-        "Select Application View:",
+        "Navigation Menu:",
         [
             "🛡️ Call Analysis",
             "📊 Analytics Dashboard",
-            "📜 Investigation History",
-            "⚖️ Multi-Call Comparator",
-            "🎓 Academic Viva & Docs",
-            "ℹ️ Privacy & Methodology"
-        ]
+            "📜 Analysis History",
+            "⚖️ Multi-Call Comparison"
+        ],
+        label_visibility="collapsed"
     )
 
     st.markdown("---")
-    st.markdown("### ⚙️ System Status")
-    whisper_status = "🟢 Ready (Local)" if is_whisper_available() else "🟡 Fallback Only"
-    st.write(f"**Whisper STT:** {whisper_status}")
-    st.write(f"**Device Mode:** CPU (Int8 Quantized)")
-    st.write(f"**Persistence:** SQLite Active")
-
-    stats_quick = database.get_statistics()
-    st.write(f"**Saved Incidents:** {stats_quick['total_calls']}")
-
-    st.markdown("---")
-    st.caption("College Mini-Project | 2nd-Year B.Tech CSE (Cyber Security)")
+    st.markdown("### 🛡️ Stay Safe Online")
+    st.markdown("""
+        <div class="safe-tip-card">
+            <b>🔒 Never Share Credentials:</b><br/>
+            Legitimate banks, telecom agents, and police officers will NEVER ask for your OTP, UPI PIN, password, or CVV over the phone.
+        </div>
+        <div class="safe-tip-card">
+            <b>🚫 Refuse Remote Desktop Tools:</b><br/>
+            Never install AnyDesk, TeamViewer, or screen-sharing tools on instructions from an unknown caller.
+        </div>
+        <div class="safe-tip-card">
+            <b>📞 Verify Independently:</b><br/>
+            If a caller claims your bank account or power connection will be cut off, disconnect and call the verified number on your physical card or official bill.
+        </div>
+        <div class="safe-tip-card">
+            <b>⏳ Resist False Urgency:</b><br/>
+            Scammers create artificial panic ("within 10 minutes") to disable rational thinking. Take a breath and consult someone you trust.
+        </div>
+        <div class="safe-tip-card">
+            <b>🚨 Report Incident:</b><br/>
+            In case of financial scam or fraud, immediately dial <b>1930</b> (Cyber Crime Helpline) or lodge an incident at <b>cybercrime.gov.in</b>.
+        </div>
+    """, unsafe_allow_html=True)
 
 
 # ==========================================
-# VIEW 1: CALL ANALYSIS TAB
+# VIEW 1: CALL ANALYSIS TAB (DEFAULT)
 # ==========================================
 if app_mode == "🛡️ Call Analysis":
+    # Clearly Visible "How It Works" Section
+    st.markdown("### ⚙️ How It Works")
+    step_cols = st.columns(5)
+    
+    steps_data = [
+        ("1", "🎙️ Upload Recording", "Upload an audio recording (.wav, .mp3, .m4a) or select a demonstration scenario."),
+        ("2", "📝 Local Transcription", "The offline Whisper speech engine converts voice into text with 100% data privacy."),
+        ("3", "🔍 Heuristic Analysis", "The engine inspects the transcript for urgency, credential demands, and impersonation."),
+        ("4", "📊 Risk Evaluation", "Receive an explainable 0–100 risk score, categorized as Low, Medium, or High Risk."),
+        ("5", "🛡️ Guidance & Report", "Follow actionable safety recommendations and download a formal forensic PDF report.")
+    ]
+
+    for idx, (num, title, desc) in enumerate(steps_data):
+        with step_cols[idx]:
+            st.markdown(f"""
+                <div class="step-card">
+                    <div class="step-num">{num}</div>
+                    <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px;">{title}</div>
+                    <div style="font-size: 0.82rem; opacity: 0.85; line-height: 1.4;">{desc}</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-bottom: 24px;'></div>", unsafe_allow_html=True)
     st.markdown("### 🛡️ Voice Call Audio Ingestion & Phishing Detection")
-    st.write("Upload an audio recording, test pre-configured educational samples, or paste a transcript to identify social engineering patterns.")
+    st.write("Upload a call recording, test pre-configured scenarios, or directly paste a conversation transcript to audit for social engineering patterns.")
 
     input_method = st.radio(
-        "Choose Input Ingestion Source:",
+        "Choose Ingestion Method:",
         [
             "🎙️ Upload Audio Recording (WAV, MP3, M4A)",
             "⚡ Quick Demo Scenarios (Pre-loaded)",
@@ -386,9 +583,9 @@ if app_mode == "🛡️ Call Analysis":
         
         with col_up:
             uploaded_audio = st.file_uploader(
-                "Upload recorded phone conversation file:",
+                "Upload recorded telephone conversation:",
                 type=["wav", "mp3", "m4a"],
-                help="Supports WAV, MP3, and M4A up to 30 MB. Processed 100% locally on your device."
+                help="Supports WAV, MP3, and M4A up to 35 MB. Audio is processed 100% locally on your machine."
             )
             if uploaded_audio is not None:
                 audio_bytes = uploaded_audio.getvalue()
@@ -397,7 +594,7 @@ if app_mode == "🛡️ Call Analysis":
                 st.audio(audio_bytes, format=f"audio/{uploaded_audio.name.split('.')[-1]}")
 
         with col_samples:
-            st.markdown("##### 📁 Or Load Pre-Generated Audio Samples:")
+            st.markdown("##### 📁 Pre-Loaded Sample Audio Files:")
             sample_files = [
                 ("Sample 1: Normal Delivery (WAV)", "sample_audio/sample_1_normal_delivery.wav", "demo_normal"),
                 ("Sample 2: Suspicious Reward (WAV)", "sample_audio/sample_2_suspicious_reward.wav", "demo_suspicious"),
@@ -422,7 +619,7 @@ if app_mode == "🛡️ Call Analysis":
                 audio_bytes = sample_info["bytes"]
                 source_filename = sample_info["name"]
                 source_type = "Sample Audio File"
-                st.success(f"Loaded: `{source_filename}`")
+                st.success(f"Ready: `{source_filename}`")
                 st.audio(audio_bytes, format="audio/wav")
 
         # Transcription Trigger
@@ -451,11 +648,11 @@ if app_mode == "🛡️ Call Analysis":
                     st.session_state.current_source = source_type
                 else:
                     st.error(f"❌ Transcription Failed: {trans_res['error']}")
-                    st.info("You can still test using the 'Quick Demo Scenarios' or 'Direct Transcript Input' options above.")
+                    st.info("You can still evaluate conversational threats using the 'Quick Demo Scenarios' or 'Direct Transcript Input' options above.")
 
     # Option 2: Pre-Loaded Demo Scenarios
     elif input_method == "⚡ Quick Demo Scenarios (Pre-loaded)":
-        st.markdown("##### 🔬 Select Curated Demonstration Scenario:")
+        st.markdown("##### 🔬 Select Demonstration Scenario:")
         demo_titles = [f"{d['title']} ({d['expected_risk']} Risk)" for d in DEMO_CONVERSATIONS]
         selected_idx = st.selectbox("Choose Scenario:", range(len(demo_titles)), format_func=lambda i: demo_titles[i])
         
@@ -475,7 +672,7 @@ if app_mode == "🛡️ Call Analysis":
         source_filename = f"{selected_demo['id']}.txt"
         source_type = "Demo Scenario"
 
-        if st.button("⚡ Run Forensic Analysis on This Scenario", type="primary", use_container_width=True):
+        if st.button("⚡ Run Threat Analysis on This Scenario", type="primary", use_container_width=True):
             st.session_state.current_transcript = call_transcript
             st.session_state.current_filename = source_filename
             st.session_state.current_source = source_type
@@ -490,7 +687,7 @@ if app_mode == "🛡️ Call Analysis":
         )
         if st.button("🔍 Analyze Custom Transcript", type="primary", use_container_width=True):
             if not user_text.strip():
-                st.warning("Please enter some text before analyzing.")
+                st.warning("Please enter conversation text before analyzing.")
             else:
                 call_transcript = user_text.strip()
                 source_filename = f"Custom_Transcript_{int(time.time())}.txt"
@@ -564,9 +761,9 @@ if app_mode == "🛡️ Call Analysis":
                         <span class="{badge_class}">{level_text}</span>
                     </div>
                     <div style="font-size: 0.9rem; line-height: 1.4;">
-                        <b>Source:</b> <code>{fname}</code><br/>
+                        <b>Source File:</b> <code>{fname}</code><br/>
                         <b>Threat Indicators Flagged:</b> <b>{analysis['indicator_count']}</b><br/>
-                        <b>Synergy Multiplier:</b> +{analysis['synergy_bonus']} pts
+                        <b>Tactical Synergy Multiplier:</b> +{analysis['synergy_bonus']} pts
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -585,7 +782,7 @@ if app_mode == "🛡️ Call Analysis":
                 <div class="cyber-card" style="text-align: center;">
                     <div style="font-size: 0.85rem; opacity: 0.8;">INCIDENT ID</div>
                     <h3 style="margin: 8px 0; color: #38bdf8;">#{st.session_state.current_case_id:04d}</h3>
-                    <div style="font-size: 0.75rem; opacity: 0.7;">Saved to SQLite DB</div>
+                    <div style="font-size: 0.75rem; opacity: 0.7;">Saved to SQLite Storage</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -642,7 +839,6 @@ if app_mode == "🛡️ Call Analysis":
         # Highlight transcript display
         display_transcript = transcript_to_analyze
         if search_term and search_term.strip():
-            # Basic text highlight for searched term
             st.info(f"Occurrences of '{search_term}': {display_transcript.lower().count(search_term.lower())}")
 
         st.text_area("Full Call Transcript:", value=display_transcript, height=180, disabled=True)
@@ -719,7 +915,7 @@ if app_mode == "🛡️ Call Analysis":
 # VIEW 2: ANALYTICS & TRENDS DASHBOARD
 # ==========================================
 elif app_mode == "📊 Analytics Dashboard":
-    st.markdown("### 📊 Cyber Threat Intelligence & Analytics Dashboard")
+    st.markdown("### 📊 Threat Intelligence & Analytics Dashboard")
     st.write("Aggregated telemetry and risk metrics derived from all saved call analysis records.")
 
     stats = database.get_statistics()
@@ -767,9 +963,9 @@ elif app_mode == "📊 Analytics Dashboard":
         with c_left:
             st.markdown("##### 🎯 Threat Severity Distribution")
             dist_data = pd.DataFrame([
-                {"Risk Level": "HIGH", "Count": stats["level_counts"]["HIGH"], "Color": "#ef4444"},
-                {"Risk Level": "MEDIUM", "Count": stats["level_counts"]["MEDIUM"], "Color": "#f59e0b"},
-                {"Risk Level": "LOW", "Count": stats["level_counts"]["LOW"], "Color": "#10b981"},
+                {"Risk Level": "HIGH", "Count": stats["level_counts"]["HIGH"]},
+                {"Risk Level": "MEDIUM", "Count": stats["level_counts"]["MEDIUM"]},
+                {"Risk Level": "LOW", "Count": stats["level_counts"]["LOW"]},
             ])
             chart = alt.Chart(dist_data).mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
                 x=alt.X("Risk Level:N", sort=["HIGH", "MEDIUM", "LOW"]),
@@ -805,16 +1001,16 @@ elif app_mode == "📊 Analytics Dashboard":
                 "Filename": rc["filename"],
                 "Risk Score": f"{rc['risk_score']} / 100",
                 "Risk Level": rc["risk_level"],
-                "Indicators": len(rc["indicators"]),
-                "Feedback": rc["feedback"]
+                "Indicators Flagged": len(rc["indicators"]),
+                "Accuracy Rating": rc["feedback"]
             })
         st.dataframe(pd.DataFrame(case_rows), use_container_width=True)
 
 
 # ==========================================
-# VIEW 3: INVESTIGATION HISTORY
+# VIEW 3: ANALYSIS HISTORY
 # ==========================================
-elif app_mode == "📜 Investigation History":
+elif app_mode == "📜 Analysis History":
     st.markdown("### 📜 Forensic Investigation History & Case Management")
     st.write("Browse, search, reopen, or export historical call analysis records stored in the local SQLite database.")
 
@@ -845,7 +1041,7 @@ elif app_mode == "📜 Investigation History":
             with st.expander(f"📁 CASE-{r['id']:04d}: {r['filename']} | Score: {r['risk_score']}/100 [{r['risk_level']}] | {r['created_at']}"):
                 col_info, col_actions = st.columns([4, 1.5])
                 with col_info:
-                    st.write(f"**Source Type:** {r['source_type']} | **Feedback:** `{r['feedback']}`")
+                    st.write(f"**Source Type:** {r['source_type']} | **Feedback Rating:** `{r['feedback']}`")
                     st.write(f"**Indicators Flagged ({len(r['indicators'])}):** " + (", ".join([i['name'] for i in r['indicators']]) if r['indicators'] else "None"))
                     st.text_area("Transcript Preview:", r["transcript"][:250] + ("..." if len(r["transcript"]) > 250 else ""), height=80, key=f"hist_txt_{r['id']}")
 
@@ -855,7 +1051,7 @@ elif app_mode == "📜 Investigation History":
                         st.session_state.current_filename = r["filename"]
                         st.session_state.current_source = r["source_type"]
                         st.session_state.current_case_id = r["id"]
-                        st.success(f"Case #{r['id']} loaded! Switch to '🛡️ Call Analysis' tab to view.")
+                        st.success(f"Case #{r['id']} loaded! Switch to '🛡️ Call Analysis' to view full report.")
 
                     if st.button("🗑️ Delete Record", key=f"del_{r['id']}", use_container_width=True):
                         database.delete_analysis(r["id"])
@@ -870,15 +1066,15 @@ elif app_mode == "📜 Investigation History":
 
 
 # ==========================================
-# VIEW 4: MULTI-CALL COMPARATOR
+# VIEW 4: MULTI-CALL COMPARISON
 # ==========================================
-elif app_mode == "⚖️ Multi-Call Comparator":
+elif app_mode == "⚖️ Multi-Call Comparison":
     st.markdown("### ⚖️ Multi-Call Threat Comparator")
-    st.write("Compare 2 or 3 saved calls side-by-side to analyze differences in attack sophistication, urgency, and tactic diversity.")
+    st.write("Compare 2 saved calls side-by-side to analyze differences in attack sophistication, urgency, and tactic diversity.")
 
     all_cases = database.get_analyses(limit=50)
     if len(all_cases) < 2:
-        st.warning("You need at least 2 saved calls to use the comparator. Analyze more calls or seed samples in the Analytics tab.")
+        st.warning("You need at least 2 saved calls to use the comparator. Analyze more calls or seed samples in the Analytics Dashboard.")
         if st.button("⚡ Seed 3 Sample Calls Now"):
             analyzer = PhishingAnalyzer()
             for demo in DEMO_CONVERSATIONS:
@@ -920,7 +1116,7 @@ elif app_mode == "⚖️ Multi-Call Comparator":
                     <div class="cyber-card">
                         <h4 style="margin: 0; color: #38bdf8;">Call A: CASE-{c1['id']:04d}</h4>
                         <div style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 10px;">{c1['filename']}</div>
-                        <div style="font-size: 2.2rem; font-weight: 800; color: {'#ef4444' if c1['risk_level'] == 'HIGH' else '#f59e0b' if c1['risk_level'] == 'MEDIUM' else '#10b981'};">
+                        <div style="font-size: 2.4rem; font-weight: 800; color: {'#ef4444' if c1['risk_level'] == 'HIGH' else '#f59e0b' if c1['risk_level'] == 'MEDIUM' else '#10b981'};">
                             {c1['risk_score']} / 100
                         </div>
                         <div style="margin: 8px 0;"><b>Level:</b> [{c1['risk_level']}]</div>
@@ -940,7 +1136,7 @@ elif app_mode == "⚖️ Multi-Call Comparator":
                     <div class="cyber-card">
                         <h4 style="margin: 0; color: #38bdf8;">Call B: CASE-{c2['id']:04d}</h4>
                         <div style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 10px;">{c2['filename']}</div>
-                        <div style="font-size: 2.2rem; font-weight: 800; color: {'#ef4444' if c2['risk_level'] == 'HIGH' else '#f59e0b' if c2['risk_level'] == 'MEDIUM' else '#10b981'};">
+                        <div style="font-size: 2.4rem; font-weight: 800; color: {'#ef4444' if c2['risk_level'] == 'HIGH' else '#f59e0b' if c2['risk_level'] == 'MEDIUM' else '#10b981'};">
                             {c2['risk_score']} / 100
                         </div>
                         <div style="margin: 8px 0;"><b>Level:</b> [{c2['risk_level']}]</div>
@@ -959,150 +1155,3 @@ elif app_mode == "⚖️ Multi-Call Comparator":
             score_diff = abs(c1["risk_score"] - c2["risk_score"])
             higher_case = f"Call A (CASE-{c1['id']:04d})" if c1["risk_score"] > c2["risk_score"] else f"Call B (CASE-{c2['id']:04d})" if c2["risk_score"] > c1["risk_score"] else "Equal Risk"
             st.info(f"⚖️ **Comparison Summary:** Risk score disparity is **{score_diff} points**. More dangerous conversation: **{higher_case}**.")
-
-
-# ==========================================
-# VIEW 5: ACADEMIC VIVA & TECHNICAL DOCS
-# ==========================================
-elif app_mode == "🎓 Academic Viva & Docs":
-    st.markdown("### 🎓 Academic Viva Voce & Technical Documentation")
-    st.write("Comprehensive examination preparation guide, architecture definitions, and cyber security concepts for B.Tech project presentation.")
-
-    tab_viva, tab_arch, tab_concepts = st.tabs(["📚 10 Examiner Viva Q&A", "🏗️ System Architecture", "🛡️ Cyber Threat Theory"])
-
-    with tab_viva:
-        st.markdown("#### 🎯 Frequently Asked Viva Voce Questions & Model Answers")
-        
-        viva_qa = [
-            (
-                "Q1. What is voice phishing (vishing) and how does it differ from traditional email phishing?",
-                "Vishing (Voice Phishing) is a social engineering attack conducted over telephone lines or VoIP where attackers verbally manipulate victims into disclosing sensitive authentication credentials (OTPs, PINs, passwords) or transferring money. Unlike email phishing which relies on hyperlinks and fake web forms, vishing leverages immediate auditory urgency, emotional intimidation, and real-time interactive deception to bypass the victim's critical thinking."
-            ),
-            (
-                "Q2. Why did your project implement a transparent rule-based engine instead of a deep-learning black-box classifier?",
-                "In cybersecurity incident response and digital forensics, explainability is paramount. Black-box neural models often output probabilities without verifiable justification and are susceptible to adversarial evasion or hallucinations. Our rule-based heuristic engine guarantees 100% explainability: every risk point is directly attributed to verifiable excerpts, specific attack categories, and transparent mathematical formulas required for legal and compliance audit trails."
-            ),
-            (
-                "Q3. How does local Whisper speech-to-text preserve user privacy compared to cloud speech APIs?",
-                "Commercial cloud speech APIs (such as Google Speech-to-Text or OpenAI Cloud API) transmit sensitive personal phone conversations across third-party networks, violating user confidentiality and data residency regulations. By deploying local faster-whisper on CPU with int8 quantization, the speech audio never leaves the host machine. All transcription occurs entirely in-memory or on local disk, ensuring complete zero-surveillance data privacy."
-            ),
-            (
-                "Q4. How do attackers manipulate human psychology using urgency and fear?",
-                "Attackers exploit fundamental cognitive biases, primarily the 'fight-or-flight' stress response. By fabricating severe time constraints ('within 10 minutes') or catastrophic penalties (police arrest warrants, power cutoffs, account freezing), attackers induce cognitive overload. Under heightened stress, the prefrontal cortex struggles to perform analytical scrutiny, forcing the victim to comply with demands they would otherwise reject."
-            ),
-            (
-                "Q5. How does your detection algorithm prevent false positives on common words like 'bank' or 'card'?",
-                "The engine rejects single-token matching. For instance, the isolated occurrence of 'bank' or 'pin' does not trigger an alert. Instead, the engine enforces contextual multi-token regular expressions and bigrams—such as `(share|verify|tell).{0,25}(otp|pin|cvv)` or `(police|fir|arrest).{0,25}(warrant|custody)`. Furthermore, matched indicators are deduplicated so repeating 'OTP' 5 times does not inflate the score fivefold."
-            ),
-            (
-                "Q6. What is the 'Synergy Multiplier' and why is it crucial in risk assessment?",
-                "In real-world cybercrime, individual indicators compound each other. A caller asking for an appointment has zero threat. But a caller impersonating a bank vigilance officer AND demanding an OTP under threat of arrest exhibits a compounding malicious signature. The synergy multiplier (+10 to +25 pts) captures this co-occurrence synergy, reflecting the exponential escalation of threat severity."
-            ),
-            (
-                "Q7. Why is the weaponization of Remote Access Tools (AnyDesk, TeamViewer) so dangerous in financial scams?",
-                "Scammers instruct victims to install remote desktop applications under the pretext of 'canceling fraudulent transactions'. Once connected, the attacker observes the victim's screen in real time. When the bank sends a 2FA OTP via SMS, the attacker reads it directly off the mirrored screen and executes unauthorized fund transfers without needing the victim to say anything."
-            ),
-            (
-                "Q8. What are the key technical limitations of rule-based heuristic detection?",
-                "Rule-based systems rely on known pattern signatures. They may experience limitations when: (1) Attackers utilize regional slang, coded language, or dialects not covered by existing regexes, (2) Audio transcription introduces phonetic spelling errors (e.g., 'any disc' instead of 'AnyDesk'), or (3) Attackers conduct prolonged recon calls without triggering immediate demand keywords."
-            ),
-            (
-                "Q9. How does Caller ID spoofing work and why should displayed phone numbers never be trusted?",
-                "Telecommunication networks using SIP (Session Initiation Protocol) and VoIP gateways allow the calling party to set the 'From' field in the call header to arbitrary phone numbers. Scammers spoof verified bank helplines or police control numbers. Therefore, security policy dictates that incoming caller identity must never be authenticated by Caller ID alone."
-            ),
-            (
-                "Q10. What immediate incident response actions should a victim take if they shared an OTP?",
-                "1. Immediately call the official bank card-blocking hotline or log into net banking to freeze all debit/credit cards and UPI access.<br/>2. Disconnect Wi-Fi and mobile data to terminate any active remote desktop sessions.<br/>3. File an urgent complaint on the National Cyber Crime Reporting Portal (cybercrime.gov.in) or call helpline 1930 within the golden hour to freeze recipient bank accounts.<br/>4. File an official police GD/FIR at the local cyber crime police station."
-            )
-        ]
-
-        for q, a in viva_qa:
-            with st.expander(f"📌 {q}"):
-                st.markdown(f"<div style='font-size: 0.95rem; line-height: 1.5;'>{a}</div>", unsafe_allow_html=True)
-
-    with tab_arch:
-        st.markdown("#### 🏗️ Modular Pipeline Architecture")
-        st.markdown("""
-            ```
-            ┌────────────────┐
-            │ Audio Input    │  (WAV, MP3, M4A or Pre-loaded Demo)
-            └───────┬────────┘
-                    │
-                    ▼
-            ┌────────────────┐
-            │ Whisper Engine │  (Local faster-whisper CPU Int8 Quantized)
-            └───────┬────────┘
-                    │
-                    ▼
-            ┌────────────────┐
-            │ Text Normalizer│  (Regex cleaning, Sentence Boundary Splitting)
-            └───────┬────────┘
-                    │
-                    ▼
-            ┌────────────────┐
-            │ Pattern Matcher│  (8 Contextual Indicators, De-duplicated Bigrams)
-            └───────┬────────┘
-                    │
-                    ▼
-            ┌────────────────┐
-            │ Synergy Calc   │  (Compounding Tactic Multiplier: +10 to +25)
-            └───────┬────────┘
-                    │
-                    ▼
-            ┌────────────────┐
-            │ Risk Scorer    │  (0-100 Capped Scale -> Low, Medium, High)
-            └───────┬────────┘
-                    │
-             ┌──────┴──────┐
-             ▼             ▼
-      ┌────────────┐ ┌────────────┐
-      │ SQLite DB  │ │ ReportLab  │  (Incident Archival & Forensic PDF Export)
-      └────────────┘ └────────────┘
-            ```
-        """)
-
-    with tab_concepts:
-        st.markdown("#### 🛡️ Key Cybersecurity Threat Vectors Detected")
-        st.markdown("""
-        | Threat Vector | Category | Base Weight | Target Asset |
-        | :--- | :--- | :--- | :--- |
-        | **Credential Harvesting** | Identity Theft | +35 pts | OTP, UPI PIN, CVV, Passwords |
-        | **Remote Desktop Hijacking** | RAT Coercion | +30 pts | AnyDesk, TeamViewer screen takeover |
-        | **Psychological Coercion** | Intimidation | +25 pts | Arrest threat, Account suspension |
-        | **Financial Demand** | Extortion | +25 pts | Safe account transfer, Advance fees |
-        | **Authority Impersonation** | Social Engineering | +20 pts | RBI, SBI, Cyber Police, TRAI |
-        | **Secrecy & Isolation** | Behavioral Lock | +20 pts | 'Do not tell bank/family' |
-        | **Artificial Urgency** | Stress Inducement | +15 pts | 'Within 10 mins', 'Act now' |
-        | **Financial Lures** | Phishing Bait | +15 pts | Fake lottery, Unclaimed bonus points |
-        """)
-
-
-# ==========================================
-# VIEW 6: PRIVACY & METHODOLOGY
-# ==========================================
-elif app_mode == "ℹ️ Privacy & Methodology":
-    st.markdown("### ℹ️ Privacy Architecture & Ethical Guidelines")
-    
-    st.markdown("""
-        <div class="cyber-card">
-            <h4 style="color: #38bdf8; margin-top: 0;">🔒 Zero-Surveillance Architecture Pledge</h4>
-            <p style="font-size: 0.95rem; line-height: 1.5;">
-                In strict adherence to cyber security ethics and Indian data privacy standards:
-            </p>
-            <ul>
-                <li><b>No Secret Call Interception:</b> This application does NOT tap telephone lines, monitor live microphones, or record incoming calls automatically. It solely analyzes audio files or transcripts intentionally provided by the user.</li>
-                <li><b>100% Local Processing:</b> Audio transcription runs entirely on the host machine using offline <code>faster-whisper</code>. No voice data or metadata is ever transmitted to cloud APIs or external servers.</li>
-                <li><b>Safe Temporary File Lifecycle:</b> Temporary audio files generated during ingestion are created in ephemeral secure system directories and deleted immediately upon analysis completion.</li>
-                <li><b>Local Incident Storage:</b> Analysis records are preserved strictly on your local SQLite database (<code>phishing_analysis.db</code>) and can be purged at any time.</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("#### 📞 National Cyber Emergency Helplines")
-    st.markdown("""
-    - **India National Cyber Crime Helpline:** Dial **1930** (Toll-Free, 24x7)
-    - **Official Reporting Portal:** [https://cybercrime.gov.in](https://cybercrime.gov.in)
-    - **Chakshu Telecom Fraud Portal (Sanchar Saathi):** [https://sancharsaathi.gov.in](https://sancharsaathi.gov.in)
-    - **Reserve Bank of India Sachet Portal:** [https://sachet.rbi.org.in](https://sachet.rbi.org.in)
-    """)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 echo "======================================================================"
 echo "   AI-Based Phishing Call Detection and Risk Analyzer"
-echo "   2nd-Year B.Tech CSE Cyber Security Mini-Project"
+echo "   Professional Cybersecurity Risk Analysis Platform"
 echo "======================================================================"
 echo ""
 

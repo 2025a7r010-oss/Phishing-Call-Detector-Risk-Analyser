@@ -1,17 +1,19 @@
 """
 transcriber.py - Local Speech-to-Text Transcription Engine
-AI-Based Phishing Call Detection and Risk Analyzer
-2nd-Year B.Tech CSE Cyber Security Mini-Project
+AI-Based Phishing Call Detection & Risk Analyzer
 
 Integrates local faster-whisper STT with graceful fallbacks, safe temporary
-file handling, audio file validation (WAV, MP3, M4A), and ffmpeg configuration.
+file handling, robust multi-format audio decoding (WAV, MP3, M4A), and compatibility
+patches for PyAV / FFmpeg versions.
 """
 
 import os
 import sys
 import tempfile
 import time
+import subprocess
 from typing import Dict, Any, Optional, List, Tuple
+import numpy as np
 
 # Ensure FFmpeg from imageio_ffmpeg is accessible in system PATH
 try:
@@ -20,6 +22,33 @@ try:
     ffmpeg_dir = os.path.dirname(ffmpeg_exe)
     if ffmpeg_dir not in os.environ.get("PATH", ""):
         os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+except Exception:
+    pass
+
+# Patch PyAV av.open to eliminate "open() got an unexpected keyword argument 'metadata_errors'"
+try:
+    import av
+    _orig_av_open = av.open
+
+    def _safe_av_open(*args, **kwargs):
+        if "metadata_errors" in kwargs:
+            try:
+                return _orig_av_open(*args, **kwargs)
+            except TypeError as te:
+                if "metadata_errors" in str(te):
+                    kwargs.pop("metadata_errors", None)
+                    return _orig_av_open(*args, **kwargs)
+                raise
+        return _orig_av_open(*args, **kwargs)
+
+    av.open = _safe_av_open
+
+    # Also apply to faster_whisper.audio if already loaded or on import
+    try:
+        import faster_whisper.audio
+        faster_whisper.audio.av.open = _safe_av_open
+    except Exception:
+        pass
 except Exception:
     pass
 
@@ -55,7 +84,7 @@ def get_whisper_model(model_size: str = "tiny"):
     return _CACHED_MODEL
 
 
-def validate_audio_file(uploaded_file, max_size_mb: int = 30) -> Tuple[bool, Optional[str], str]:
+def validate_audio_file(uploaded_file, max_size_mb: int = 35) -> Tuple[bool, Optional[str], str]:
     """
     Validates uploaded audio file format and size constraints.
     
@@ -70,7 +99,7 @@ def validate_audio_file(uploaded_file, max_size_mb: int = 30) -> Tuple[bool, Opt
     ext = os.path.splitext(name)[1]
 
     if ext not in allowed_extensions:
-        return False, f"Unsupported audio extension '{ext}'. Allowed: WAV, MP3, M4A.", ext
+        return False, f"Unsupported audio format '{ext}'. Supported formats: WAV, MP3, M4A.", ext
 
     # Check file size
     size_bytes = uploaded_file.size
@@ -79,6 +108,35 @@ def validate_audio_file(uploaded_file, max_size_mb: int = 30) -> Tuple[bool, Opt
         return False, f"File size exceeds safety limit ({round(size_bytes / (1024*1024), 1)} MB > {max_size_mb} MB).", ext
 
     return True, None, ext
+
+
+def decode_audio_with_ffmpeg(audio_path: str, sample_rate: int = 16000) -> Optional[np.ndarray]:
+    """
+    Directly decodes any audio file (WAV, MP3, M4A) to a 1D float32 NumPy array at 16kHz
+    using FFmpeg. Bypasses PyAV container errors and metadata mismatches entirely.
+    """
+    try:
+        import imageio_ffmpeg
+        ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+        cmd = [
+            ffmpeg_bin,
+            "-nostdin",
+            "-threads", "0",
+            "-i", audio_path,
+            "-f", "s16le",
+            "-ac", "1",
+            "-acodec", "pcm_s16le",
+            "-ar", str(sample_rate),
+            "-"
+        ]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        raw_pcm, _ = proc.communicate()
+        if raw_pcm and len(raw_pcm) > 0:
+            audio_array = np.frombuffer(raw_pcm, dtype=np.int16).flatten().astype(np.float32) / 32768.0
+            return audio_array
+    except Exception:
+        pass
+    return None
 
 
 def transcribe_audio_file(
@@ -110,7 +168,7 @@ def transcribe_audio_file(
             "segments": [],
             "duration_seconds": 0.0,
             "processing_time": 0.0,
-            "error": "faster-whisper is not installed. Please use Demo Mode or install faster-whisper."
+            "error": "Local speech recognition engine (faster-whisper) is not available. Please test using Demo Mode or install dependencies."
         }
 
     is_valid, err_msg, ext = validate_audio_file(uploaded_file)
@@ -139,14 +197,47 @@ def transcribe_audio_file(
         model = get_whisper_model(model_size)
 
         if progress_callback:
-            progress_callback(0.5, "Transcribing voice audio segments...")
+            progress_callback(0.4, "Transcribing voice audio segments...")
 
-        segments_generator, info = model.transcribe(
-            temp_path,
-            beam_size=5,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500)
-        )
+        segments_generator = None
+        info = None
+
+        # Attempt 1: Standard transcription via file path
+        try:
+            segments_generator, info = model.transcribe(
+                temp_path,
+                beam_size=5,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500)
+            )
+        except TypeError as te:
+            # Handle metadata_errors or other PyAV argument issues
+            if "metadata_errors" in str(te) or "unexpected keyword argument" in str(te):
+                # Fallback to direct FFmpeg PCM decoding to NumPy array
+                audio_np = decode_audio_with_ffmpeg(temp_path)
+                if audio_np is not None:
+                    segments_generator, info = model.transcribe(
+                        audio_np,
+                        beam_size=5,
+                        vad_filter=True,
+                        vad_parameters=dict(min_silence_duration_ms=500)
+                    )
+                else:
+                    raise te
+            else:
+                raise te
+        except Exception:
+            # Fallback to direct FFmpeg PCM decoding if PyAV container decoding fails
+            audio_np = decode_audio_with_ffmpeg(temp_path)
+            if audio_np is not None:
+                segments_generator, info = model.transcribe(
+                    audio_np,
+                    beam_size=5,
+                    vad_filter=True,
+                    vad_parameters=dict(min_silence_duration_ms=500)
+                )
+            else:
+                raise
 
         segments_list = []
         full_text_pieces = []
@@ -166,7 +257,7 @@ def transcribe_audio_file(
 
         full_transcript = " ".join(full_text_pieces).strip()
         elapsed = round(time.time() - t0, 2)
-        total_audio_duration = round(info.duration, 2) if hasattr(info, "duration") else 0.0
+        total_audio_duration = round(info.duration, 2) if (info and hasattr(info, "duration")) else 0.0
 
         if not full_transcript:
             return {

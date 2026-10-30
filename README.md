@@ -1,6 +1,5 @@
-# AI-Based Phishing Call Detection and Risk Analyzer
+# AI-Based Phishing Call Detection & Risk Analyzer
 
-**2nd-Year B.Tech CSE (Cyber Security) College Mini-Project**  
 *A transparent, explainable, and local voice phishing (vishing) threat analyzer.*
 
 [![CI Test Suite](https://github.com/2025a7r010-oss/Phishing-Call-Detector-Risk-Analyser/actions/workflows/ci.yml/badge.svg)](https://github.com/2025a7r010-oss/Phishing-Call-Detector-Risk-Analyser/actions/workflows/ci.yml)
@@ -37,18 +36,18 @@ Voice phishing (**vishing**) is one of the fastest-growing attack vectors in cyb
 ### 2. Modern UI/UX Design
 - **Cybersecurity Theme:** Professional dark slate and navy palette with neon status badges and gauge cards.
 - **Light / Dark Mode Toggle:** Working instant theme switch (☀️ Light / 🌙 Dark) preserving the active analysis session.
-- **Demo Video Walkthrough:** In-app interactive simulator demonstrating the complete data pipeline.
+- **Top Information Bar:** Five interactive icons (Problem Statement, Proposed Solution, SMART Objectives, Architecture Design, Next Milestones) plus a Demo Video player.
+- **5-Step 'How It Works' Section:** Visual step-by-step workflow guide on the main analysis dashboard.
 - **Searchable Transcript Viewer:** In-transcript keyword search with color-coded threat excerpt chips.
-- **Pre-Loaded Demo Mode:** 3 rich educational scenarios (Normal, Suspicious, Critical Vishing) that work 100% offline without Whisper.
+- **Pre-Loaded Demo Mode:** 3 realistic scenarios (Normal, Suspicious, Critical Vishing) that work 100% offline without Whisper.
 - **Ready-to-Use Audio Samples:** Includes pre-synthesized WAV files in `sample_audio/` for instant audio upload testing.
 
-### 3. Advanced Forensic & Academic Tools
+### 3. Advanced Forensic & Analytical Tools
 - **SQLite Local Persistence:** Saves case records in `phishing_analysis.db` with search, filter by risk level, and full case re-opening.
 - **Multi-Call Comparator:** Side-by-side comparison of 2 calls to contrast attack vectors, scores, and linguistic patterns.
 - **Telemetry & Trends Dashboard:** Visualizes risk severity distribution and top detected attack tactics using Altair charts.
 - **User Accuracy Feedback:** Rate analyses as "Accurate", "False Positive", or "False Negative" directly in the database.
-- **CSV Data Export:** One-click export of complete case history for forensic records or academic submissions.
-- **Academic Viva Voce Module:** Includes 10 curated examiner viva questions and detailed answers.
+- **CSV Data Export:** One-click export of complete case history for forensic records or incident reporting.
 
 ---
 
