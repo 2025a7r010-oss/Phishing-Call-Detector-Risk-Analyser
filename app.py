@@ -83,8 +83,12 @@ THEME_CSS = {
         background-color: #0a0e17;
         color: #f8fafc;
     }
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
     .main-header-container {
-        padding: 8px 0 16px 0;
+        padding: 4px 0 14px 0;
         margin-bottom: 12px;
         border-bottom: 1px solid #1e293b;
     }
@@ -218,8 +222,12 @@ THEME_CSS = {
         background-color: #f8fafc;
         color: #0f172a;
     }
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
     .main-header-container {
-        padding: 8px 0 16px 0;
+        padding: 4px 0 14px 0;
         margin-bottom: 12px;
         border-bottom: 1px solid #e2e8f0;
     }
